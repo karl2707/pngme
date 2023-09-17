@@ -1,0 +1,6 @@
+# Folders
+/target
+/.vscode
+
+# Files
+Cargo.lock
