@@ -1,4 +1,4 @@
-use std::{str::FromStr, fmt::Display, error::Error, io::Read};
+use std::{str::FromStr, fmt::Display, error::Error};
 use std::str;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -7,39 +7,39 @@ pub struct ChunkType {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-enum ChunkLayout {
-    AncillaryBit = 0,
-    PrivateBit = 1,
-    ReservedBit = 2,
-    SafeToCopyBit = 3,
+enum ChunkLayoutBit {
+    Ancillary = 0,
+    Private = 1,
+    Reserved = 2,
+    SafeToCopy = 3,
 }
 
 impl ChunkType { 
     const BITMAP: u8 = 32;
 
     pub fn bytes(&self) -> [u8; 4] {
-        self.bytes.clone()
+        self.bytes
     }
     pub fn is_critical(&self) -> bool {
-        self.bytes[ChunkLayout::AncillaryBit as usize] & Self::BITMAP != Self::BITMAP
+        self.bytes[ChunkLayoutBit::Ancillary as usize] & Self::BITMAP != Self::BITMAP
     }
     pub fn is_public(&self) -> bool {
-        self.bytes[ChunkLayout::PrivateBit as usize] & Self::BITMAP != Self::BITMAP
+        self.bytes[ChunkLayoutBit::Private as usize] & Self::BITMAP != Self::BITMAP
     }
     pub fn is_safe_to_copy(&self) -> bool {
-        self.bytes[ChunkLayout::SafeToCopyBit as usize] & Self::BITMAP == Self::BITMAP
+        self.bytes[ChunkLayoutBit::SafeToCopy as usize] & Self::BITMAP == Self::BITMAP
     }
     pub fn is_valid(&self) -> bool {
         self.are_bytes_valid() && self.is_reserved_bit_valid()
     }
     pub fn is_reserved_bit_valid(&self) -> bool {
-        self.bytes[ChunkLayout::ReservedBit as usize] & Self::BITMAP != Self::BITMAP
+        self.bytes[ChunkLayoutBit::Reserved as usize] & Self::BITMAP != Self::BITMAP
     }
 
     fn are_bytes_valid(&self) -> bool {
         self.bytes
             .iter()
-            .all(|&x| (x >= 65 && x <= 90) || (x >= 97 && x <= 122))
+            .all(|&x| (65..=90).contains(&x) || (97..=122).contains(&x))
     }
 }
 
@@ -64,7 +64,7 @@ impl FromStr for ChunkType {
             Err(_e) => return Err(ChunkTypeError::ByteLengthError(s.as_bytes().len())),
         };
         
-        Ok(Self::try_from(bytes)?)
+        Self::try_from(bytes)
     }
 }
 

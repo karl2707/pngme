@@ -3,3 +3,4 @@ members = [
     "pngme-core",
     "pngme-cli",
 ]
+workspace.resolver = "2"

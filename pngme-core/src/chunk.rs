@@ -30,7 +30,7 @@ impl Chunk {
         self.crc
     }
     pub fn data_as_string(&self) -> Result<String, FromUtf8Error> {
-        Ok(String::from_utf8(self.data.clone())?)
+        String::from_utf8(self.data.clone())
     }
     pub fn as_bytes(&self) -> Vec<u8> {
         let chunk_bytes: Vec<u8> = self.length.to_be_bytes().iter()
