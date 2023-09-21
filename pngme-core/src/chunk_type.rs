@@ -1,7 +1,7 @@
 use std::{str::FromStr, fmt::Display, error::Error, io::Read};
 use std::str;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct ChunkType {
     bytes: [u8; 4],
 }
@@ -29,11 +29,9 @@ impl ChunkType {
     pub fn is_safe_to_copy(&self) -> bool {
         self.bytes[ChunkLayout::SafeToCopyBit as usize] & Self::BITMAP == Self::BITMAP
     }
-    
     pub fn is_valid(&self) -> bool {
         self.are_bytes_valid() && self.is_reserved_bit_valid()
     }
-
     pub fn is_reserved_bit_valid(&self) -> bool {
         self.bytes[ChunkLayout::ReservedBit as usize] & Self::BITMAP != Self::BITMAP
     }
@@ -43,7 +41,6 @@ impl ChunkType {
             .iter()
             .all(|&x| (x >= 65 && x <= 90) || (x >= 97 && x <= 122))
     }
-
 }
 
 impl TryFrom<[u8; 4]> for ChunkType {
