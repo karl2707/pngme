@@ -1,12 +1,13 @@
-use std::{str::FromStr, fmt::Display, error::Error};
 use std::str;
+use std::{fmt::Display, str::FromStr};
+use crate::pngme_error::PngMeError;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct ChunkType {
     bytes: [u8; 4],
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 enum ChunkLayoutBit {
     Ancillary = 0,
     Private = 1,
@@ -14,7 +15,7 @@ enum ChunkLayoutBit {
     SafeToCopy = 3,
 }
 
-impl ChunkType { 
+impl ChunkType {
     const BITMAP: u8 = 32;
 
     pub fn bytes(&self) -> [u8; 4] {
@@ -44,26 +45,26 @@ impl ChunkType {
 }
 
 impl TryFrom<[u8; 4]> for ChunkType {
-    type Error = ChunkTypeError;
+    type Error = PngMeError;
 
     fn try_from(value: [u8; 4]) -> Result<Self, Self::Error> {
-        let chunk_type = Self{ bytes: value };
+        let chunk_type = Self { bytes: value };
         if !chunk_type.are_bytes_valid() {
-            return Err(ChunkTypeError::InvalicCharater);
+            return Err(Self::Error::InvalidCharacterChunkType);
         }
         Ok(chunk_type)
     }
 }
 
 impl FromStr for ChunkType {
-    type Err = ChunkTypeError;
+    type Err = PngMeError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let bytes: [u8; 4] = match s.as_bytes().try_into() {
             Ok(bytes) => bytes,
-            Err(_e) => return Err(ChunkTypeError::ByteLengthError(s.as_bytes().len())),
+            Err(_e) => return Err(Self::Err::ChunkTypeByteLengthError(s.as_bytes().len())),
         };
-        
+
         Self::try_from(bytes)
     }
 }
@@ -71,23 +72,6 @@ impl FromStr for ChunkType {
 impl Display for ChunkType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", str::from_utf8(&self.bytes).unwrap())
-    }
-}
-
-#[derive(Debug, PartialEq)]
-pub enum ChunkTypeError {
-    ByteLengthError(usize),
-    InvalicCharater,
-}
-
-impl Error for ChunkTypeError {}
-
-impl Display for ChunkTypeError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::ByteLengthError(len) => write!(f, "chunk type expected length 4, provided {}", len),
-            Self::InvalicCharater => write!(f, "incorrect charater in chunk type"),
-        }
     }
 }
 
@@ -107,7 +91,7 @@ mod chunk_type_tests {
 
     #[test]
     pub fn test_chunk_type_from_illegal_bytes() {
-        let actual = ChunkType::try_from([0, 0, 0,0 ]);
+        let actual = ChunkType::try_from([0, 0, 0, 0]);
         assert!(actual.is_err());
     }
 
@@ -186,8 +170,6 @@ mod chunk_type_tests {
         let chunk = ChunkType::from_str("RuSt").unwrap();
         assert_eq!(&chunk.to_string(), "RuSt");
     }
-
-    
 }
 
 #[cfg(test)]
@@ -200,14 +182,14 @@ mod chunk_type_traits_tests {
     pub fn test_chunk_from_too_long_string() {
         let s = "RUSTT";
         let chunk = ChunkType::from_str(s).err().unwrap();
-        assert_eq!(chunk, ChunkTypeError::ByteLengthError(s.len()));
+        assert_eq!(chunk, PngMeError::ChunkTypeByteLengthError(s.len()));
     }
 
     #[test]
     pub fn test_chunk_from_too_short_string() {
         let s = "RUS";
         let chunk = ChunkType::from_str(s).err().unwrap();
-        assert_eq!(chunk, ChunkTypeError::ByteLengthError(s.len()));
+        assert_eq!(chunk, PngMeError::ChunkTypeByteLengthError(s.len()));
     }
 
     #[test]

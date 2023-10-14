@@ -1,9 +1,10 @@
-use std::{error::Error, fmt::Display, string::FromUtf8Error};
-use crate::chunk_type::{ChunkType, ChunkTypeError};
+use crate::chunk_type::{ChunkType};
+use crate::pngme_error::PngMeError;
 use crc::{Crc, CRC_32_ISO_HDLC};
+use std::{fmt::Display, string::FromUtf8Error};
 
 #[derive(Debug, Clone)]
-struct Chunk {
+pub struct Chunk {
     length: u32,
     chunk_type: ChunkType,
     data: Vec<u8>,
@@ -14,8 +15,13 @@ impl Chunk {
     pub fn new(chunk_type: ChunkType, data: Vec<u8>) -> Chunk {
         let length = data.len() as u32;
         let crc = Self::calculate_crc(&chunk_type, &data);
-        
-        Self { length, chunk_type, data, crc }
+
+        Self {
+            length,
+            chunk_type,
+            data,
+            crc,
+        }
     }
     pub fn length(&self) -> u32 {
         self.length
@@ -33,20 +39,23 @@ impl Chunk {
         String::from_utf8(self.data.clone())
     }
     pub fn as_bytes(&self) -> Vec<u8> {
-        let chunk_bytes: Vec<u8> = self.length.to_be_bytes().iter()
+        let chunk_bytes: Vec<u8> = self.length
+            .to_be_bytes()
+            .iter()
             .chain(self.chunk_type.bytes().iter())
             .chain(self.data.iter())
             .chain(self.crc.to_be_bytes().iter())
             .copied()
             .collect();
-        
+
         chunk_bytes
     }
 
     fn calculate_crc(chunk_type: &ChunkType, data: &[u8]) -> u32 {
         const CRC_CALCULATOR: Crc<u32> = Crc::<u32>::new(&CRC_32_ISO_HDLC);
 
-        let crc_data: Vec<u8> = chunk_type.bytes().iter()
+        let crc_data: Vec<u8> = chunk_type.bytes()
+            .iter()
             .chain(data.iter())
             .copied()
             .collect();
@@ -56,50 +65,38 @@ impl Chunk {
 }
 
 impl TryFrom<&[u8]> for Chunk {
-    type Error = ChunkError;
+    type Error = PngMeError;
 
     fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
         let len_bytes: [u8; 4] = value[0..4].try_into().unwrap();
         let chunk_type_bytes: [u8; 4] = value[4..8].try_into().unwrap();
 
-        let length = u32::from_be_bytes(len_bytes);
-        let chunk_type = ChunkType::try_from(chunk_type_bytes).unwrap();
+        let length = u32::from_be_bytes(len_bytes);     // TODO Implement length checking
+        let chunk_type = ChunkType::try_from(chunk_type_bytes)?;
 
         let data = value[8..(length as usize + 8)].to_vec();
-        
+
         let crc_bytes: [u8; 4] = value[(length as usize + 8)..].try_into().unwrap();
         let crc = u32::from_be_bytes(crc_bytes);
 
         let crc_calculated = Self::calculate_crc(&chunk_type, &data);
 
         if crc != crc_calculated {
-            return Err(ChunkError::CrcDoNotMatch(crc, crc_calculated));
+            return Err(PngMeError::CrcDoNotMatch(crc, crc_calculated));
         }
 
-        Ok(Self{ length, chunk_type, data, crc })
+        Ok(Self {
+            length,
+            chunk_type,
+            data,
+            crc,
+        })
     }
 }
 
 impl Display for Chunk {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.chunk_type)
-    }
-}
-
-#[derive(Debug, PartialEq)]
-enum ChunkError {
-    InvalidChunkTypeInput(ChunkTypeError),
-    CrcDoNotMatch(u32, u32),
-}
-
-impl Error for ChunkError {}
-
-impl Display for ChunkError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::InvalidChunkTypeInput(chunk_type_error) => write!(f, "{}", chunk_type_error),
-            Self::CrcDoNotMatch(provided, calculated) => write!(f, "provided crc {} does not match calculated {}", provided, calculated),
-        }
     }
 }
 
@@ -123,14 +120,16 @@ mod tests {
             .chain(crc.to_be_bytes().iter())
             .copied()
             .collect();
-        
+
         Chunk::try_from(chunk_data.as_ref()).unwrap()
     }
 
     #[test]
     fn test_new_chunk() {
         let chunk_type = ChunkType::from_str("RuSt").unwrap();
-        let data = "This is where your secret message will be!".as_bytes().to_vec();
+        let data = "This is where your secret message will be!"
+            .as_bytes()
+            .to_vec();
         let chunk = Chunk::new(chunk_type, data);
         assert_eq!(chunk.length(), 42);
         assert_eq!(chunk.crc(), 2882656334);
@@ -225,9 +224,9 @@ mod tests {
             .chain(crc.to_be_bytes().iter())
             .copied()
             .collect();
-        
+
         let chunk: Chunk = TryFrom::try_from(chunk_data.as_ref()).unwrap();
-        
+
         let _chunk_string = format!("{}", chunk);
     }
 }
