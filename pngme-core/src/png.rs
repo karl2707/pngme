@@ -1,4 +1,7 @@
-use std::{fmt::Display, str::FromStr, u32, usize, vec};
+use std::{fmt::Display, str::FromStr, u32, usize};
+use std::fs::File;
+use std::io::{Read, Write};
+use std::path::PathBuf;
 use crate::{chunk::{Chunk}, chunk_type::ChunkType, pngme_error::PngMeError};
 
 #[derive(Debug)]
@@ -49,6 +52,23 @@ impl Png {
             .copied()
             .chain(self.chunks.iter().flat_map(|c| c.as_bytes()))
             .collect()
+    }
+    pub fn get_number_of_chunks(&self) -> usize {
+        self.chunks.len()
+    }
+    pub fn read_png_from_file(path_buf: &PathBuf) -> Result<Png, PngMeError> {
+        let mut file = File::open(path_buf).unwrap();
+        let len = file.metadata().unwrap().len() as usize;
+        let mut bytes: Vec<u8> = Vec::with_capacity(len);
+        let _num_bytes_read = file.read_to_end(&mut bytes).unwrap();
+
+        Png::try_from(bytes.as_slice())
+    }
+    pub fn write_into_file(&self, path_buf: &PathBuf) -> Result<(), PngMeError> {
+        let mut file = File::create(path_buf).unwrap();
+        file.write_all(&self.as_bytes()).expect("Faili kirjutamine ebaõnnestus.");
+
+        Ok(())
     }
 
     fn get_chunk_by_chunk_type(&self, chunk_type: &ChunkType) -> Option<usize> {
@@ -117,7 +137,7 @@ mod tests {
         Png::from_chunks(chunks)
     }
 
-    fn chunk_from_strings(chunk_type: &str, data: &str) -> Result<Chunk, PngMeError> {
+    pub fn chunk_from_strings(chunk_type: &str, data: &str) -> Result<Chunk, PngMeError> {
         let chunk_type = ChunkType::from_str(chunk_type)?;
         let data: Vec<u8> = data.bytes().collect();
 

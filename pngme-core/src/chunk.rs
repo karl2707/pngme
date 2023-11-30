@@ -96,7 +96,7 @@ impl TryFrom<&[u8]> for Chunk {
 
 impl Display for Chunk {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.chunk_type)
+        write!(f, "Chunk type: {} Message: {}", self.chunk_type, String::from_utf8_lossy(self.data()))
     }
 }
 
