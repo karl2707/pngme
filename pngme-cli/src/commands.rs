@@ -71,7 +71,15 @@ pub struct RemoveArgs {
 impl RemoveArgs {
     pub fn remove(self) -> Result<(), PngMeError> {
         let mut png = Png::read_png_from_file(&self.file_path)?;
-        todo!()
+        let removed_chunk = png.remove_chunk(&self.chunk_type)?;
+        println!("Removed {}", removed_chunk);
+
+        match self.output_file {
+            None => png.write_into_file(&self.file_path).unwrap(),
+            Some(output_path) => png.write_into_file(&output_path).unwrap()
+        }
+
+        Ok(())
     }
 }
 

@@ -1,9 +1,11 @@
 mod commands;
 
+use std::time::Instant;
 use clap::Parser;
 use crate::commands::Args;
 
 fn main() {
+    let start = Instant::now();
     let args = Args::parse();
 
     let result = match args {
@@ -17,4 +19,7 @@ fn main() {
         Ok(_) => println!("Program exited successfully."),
         Err(e) => println!("Program terminated unsuccessfully: {}.", e),
     }
+
+    let duration = start.elapsed();
+    println!("Execution took {:?} seconds", duration);
 }
